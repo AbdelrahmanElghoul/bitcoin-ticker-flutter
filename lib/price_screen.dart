@@ -1,4 +1,10 @@
+import 'package:bitcoin_ticker/coin_data.dart';
+import 'package:bitcoin_ticker/utils/network.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'dart:io' show Platform;
+
+import 'currency_card.dart';
 
 class PriceScreen extends StatefulWidget {
   @override
@@ -6,11 +12,80 @@ class PriceScreen extends StatefulWidget {
 }
 
 class _PriceScreenState extends State<PriceScreen> {
+  String selectedCurrency='AUD';
+  int BTCValue = 0;
+  int LTCValue = 0;
+  int ETHValue = 0;
+  Widget picker;
+
+  List<DropdownMenuItem<String>> dropDownList;
+  DropdownButton androidDropdown() {
+    dropDownList = [];
+    for (String currency in currenciesList)
+      dropDownList.add(DropdownMenuItem(
+        child: Text(currency),
+        value: currency,
+      ));
+    return DropdownButton<String>(
+      value: selectedCurrency,
+      items: dropDownList,
+      onChanged: (v) => setState(() {
+        selectedCurrency = v;
+        print('new value =$selectedCurrency');
+        updateUI();
+      }),
+
+    );
+  }
+
+  void updateUI() async {
+    Network network = Network();
+    await network.data(selectedCurrency);
+    setState(() {
+      BTCValue = network.btc.round();
+      LTCValue = network.ltc.round();
+      ETHValue = network.eth.round();
+    });
+  }
+
+  List<Text> pickerList;
+  CupertinoPicker IOSPicker() {
+    pickerList = [];
+    for (String currency in currenciesList) pickerList.add(Text(currency));
+
+    return CupertinoPicker(
+        looping: false,
+        backgroundColor: Colors.lightBlue,
+        itemExtent: 32,
+        onSelectedItemChanged: (selectedIndex) {
+          setState(() {
+            selectedCurrency = pickerList[selectedIndex].data;
+            updateUI();
+          });
+        },
+        children: pickerList);
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    setPicker();
+    updateUI();
+
+  }
+
+  void setPicker() {
+    picker = Platform.isIOS ? IOSPicker() : androidDropdown();
+      selectedCurrency =
+      Platform.isIOS ? pickerList[0].data : dropDownList[0].value;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('🤑 Coin Ticker1'),
+        title: Text('🤑 Coin Ticker'),
       ),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -18,23 +93,26 @@ class _PriceScreenState extends State<PriceScreen> {
         children: <Widget>[
           Padding(
             padding: EdgeInsets.fromLTRB(18.0, 18.0, 18.0, 0),
-            child: Card(
-              color: Colors.lightBlueAccent,
-              elevation: 5.0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 15.0, horizontal: 28.0),
-                child: Text(
-                  '1 BTC = ? USD',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 20.0,
-                    color: Colors.white,
-                  ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                CurrencyCard(
+                  currencyValue: BTCValue,
+                  selectedCurrency: selectedCurrency,
+                  fromCurrency: 'BTC',
                 ),
-              ),
+                CurrencyCard(
+                  currencyValue: LTCValue,
+                  selectedCurrency: selectedCurrency,
+                  fromCurrency: 'LTC',
+                ),
+                CurrencyCard(
+                  currencyValue: ETHValue,
+                  selectedCurrency: selectedCurrency,
+                  fromCurrency: 'ETH',
+                ),
+              ],
             ),
           ),
           Container(
@@ -42,7 +120,7 @@ class _PriceScreenState extends State<PriceScreen> {
             alignment: Alignment.center,
             padding: EdgeInsets.only(bottom: 30.0),
             color: Colors.lightBlue,
-            child: null,
+            child: picker,
           ),
         ],
       ),
